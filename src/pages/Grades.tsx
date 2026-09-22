@@ -394,11 +394,11 @@ export default function GradesPage() {
                     </div>
                   </div>
 
-                  {/* سجل المحاولات التفصيلي */}
+                  {/* سجل المحاولات التفصيلي - التصميم الأفقي الجديد والأنيق */}
                   <div className="space-y-3 pt-3 border-t border-slate-100">
                     <span className="block text-xs font-black text-slate-800">سجل المحاولات السابقة:</span>
                     
-                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
                         const StatusIcon = style.icon;
@@ -406,34 +406,39 @@ export default function GradesPage() {
                         return (
                           <div 
                             key={att.id || attIdx} 
-                            className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 space-y-2 text-xs transition-all hover:bg-white hover:shadow-sm"
+                            className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 transition-all hover:bg-white hover:shadow-xs space-y-2"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-black text-slate-800">
+                            {/* سطر أفقي يجمع رقم المحاولة مع الحالة والدرجة */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-black text-slate-800 shrink-0">
                                 المحاولة ({group.attempts.length - attIdx})
                               </span>
-                              <span className={cx("px-3 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1.5 shadow-2xs", style.className)}>
-                                <StatusIcon size={13} />
-                                {style.label}
-                              </span>
+
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-xl border border-indigo-100">
+                                  {att.score} من {att.maxScore} <span className="text-[10px] text-slate-500">({att.percentage}%)</span>
+                                </span>
+
+                                <span className={cx("px-2.5 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1 shadow-2xs shrink-0", style.className)}>
+                                  <StatusIcon size={12} />
+                                  {style.label}
+                                </span>
+                              </div>
                             </div>
 
-                            <div className="flex items-center justify-between text-slate-600 font-semibold pt-0.5">
-                              <span>الدرجة المحققة:</span>
-                              <span className="font-black text-indigo-700">{att.score} من {att.maxScore} ({att.percentage}%)</span>
-                            </div>
-
+                            {/* ملاحظات المعلم إذا وجدت */}
                             {att.feedback && (
-                              <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                              <div className="p-2 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
                                 <strong className="block font-bold mb-0.5 flex items-center gap-1">
-                                  <Sparkles size={12} className="text-amber-600" /> ملاحظات المعلم:
+                                  <Sparkles size={11} className="text-amber-600" /> ملاحظات المعلم:
                                 </strong>
                                 {att.feedback}
                               </div>
                             )}
 
+                            {/* تاريخ التسليم في الأسفل */}
                             {att.submittedAt && (
-                              <div className="text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 flex items-center gap-1">
+                              <div className="text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-200/50 flex items-center gap-1">
                                 <Clock size={11} className="text-slate-400" />
                                 <span>تاريخ التسليم: {formatDate(att.submittedAt)}</span>
                               </div>
