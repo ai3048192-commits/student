@@ -128,6 +128,16 @@ export default function GradesPage() {
         const quiz = quizMap.get(row.quiz_id);
         const course = quiz ? courseMap.get(quiz.course_id) : undefined;
 
+        // تحديد اسم المعلم بدقة بناءً على بيانات الاختبار أو الكورس أو حقول الـ Submission
+        const instructorName = 
+          quiz?.teacher_name || 
+          quiz?.instructor || 
+          course?.instructor || 
+          course?.teacher_name || 
+          row.teacher_name || 
+          row.instructor || 
+          "المعلم المسؤول";
+
         const score = Number(row.score) || 0;
         const maxScore = Number(row.max_score) > 0 ? Number(row.max_score) : 100;
         const percentage = Math.round((score / maxScore) * 100);
@@ -147,8 +157,8 @@ export default function GradesPage() {
         if (!mapByQuiz.has(quizId)) {
           mapByQuiz.set(quizId, {
             quizId,
-            courseName: row.course_name || quiz?.course_name || course?.course_name || "غير محدد",
-            instructor: quiz?.teacher_name || quiz?.instructor || course?.instructor || "غير محدد",
+            courseName: row.course_name || quiz?.course_name || course?.course_name || "اختبار عام",
+            instructor: instructorName,
             category: row.specialty || course?.course_specialty || quiz?.course_specialty || "عام",
             attempts: [],
             bestScore: score,
@@ -277,7 +287,7 @@ export default function GradesPage() {
         </div>
       )}
 
-      {/* ------------------------------ List (Small Compact Cards) ------------------------------ */}
+      {/* ------------------------------ List ------------------------------ */}
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3 px-1">
           <h2 className="flex items-center gap-2 text-base font-black text-slate-800">
@@ -332,10 +342,9 @@ export default function GradesPage() {
                   key={idx}
                   className="group relative bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all duration-300 flex flex-col justify-between space-y-4 overflow-hidden"
                 >
-                  {/* شريط تزييني علوي */}
                   <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-400" />
 
-                  {/* رأس الكرت المصغر */}
+                  {/* رأس الكرت */}
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
@@ -348,7 +357,6 @@ export default function GradesPage() {
                           {group.attempts.length} محاولات
                         </span>
                         
-                        {/* زر حذف الكرت بالكامل */}
                         <button
                           type="button"
                           onClick={() => handleDeleteGroup(group.quizId)}
@@ -365,13 +373,14 @@ export default function GradesPage() {
                       {group.courseName}
                     </h3>
 
+                    {/* اسم المعلم الفعلي الخاص بالامتحان */}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                       <User size={12} className="text-indigo-500 shrink-0" />
                       <span>المعلم:</span>
                       <span className="font-bold text-slate-700">{group.instructor}</span>
                     </div>
 
-                    {/* شريط أفضل نتيجة مصغر */}
+                    {/* أفضل نتيجة */}
                     <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Award size={15} className="text-amber-500 shrink-0" />
@@ -383,7 +392,7 @@ export default function GradesPage() {
                     </div>
                   </div>
 
-                  {/* سجل المحاولات السابقة (تظهر بشكل صف أفقي مصغر) */}
+                  {/* سجل المحاولات السابقة */}
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <span className="block text-[11px] font-black text-slate-700">المحاولات السابقة:</span>
                     
