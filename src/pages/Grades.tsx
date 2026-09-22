@@ -224,7 +224,7 @@ export default function GradesPage() {
   }, [groupedGrades]);
 
   return (
-    <div className="mx-auto min-h-screen w-full space-y-6 text-slate-800 sm:space-y-8 pb-12 max-w-7xl px-4 sm:px-6" dir="rtl">
+    <div className="mx-auto min-h-screen w-full space-y-6 text-slate-800 sm:space-y-8 pb-12 max-w-9xl px-4 sm:px-6" dir="rtl">
       
       {/* ------------------------------ Header ------------------------------ */}
       <header className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-l from-indigo-900 via-slate-900 to-blue-950 p-6 sm:p-8 text-white shadow-xl">
