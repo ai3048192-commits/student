@@ -13,8 +13,7 @@ import {
   User,
   History,
   Award,
-  BookOpen,
-  ChevronLeft
+  BookOpen
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -56,7 +55,7 @@ const STATE_STYLE: Record<GradeState, { label: string; className: string; icon: 
 };
 
 /* ================================================================== */
-/*  Helpers                                                             */
+/*  Helpers                                                           */
 /* ================================================================== */
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
@@ -76,7 +75,7 @@ const formatDate = (value?: string | null) => {
 };
 
 /* ================================================================== */
-/*  Page                                                             */
+/*  Page                                                              */
 /* ================================================================== */
 
 export default function GradesPage() {
@@ -229,18 +228,55 @@ export default function GradesPage() {
 
       {/* ------------------------------ Summary ------------------------------ */}
       {status === "ready" && groupedGrades.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          {(
-            [
-              ["الاختبارات المسجلة", String(summary.totalQuizzes), "text-slate-900", "bg-slate-50 border-slate-200"],
-              ["إجمالي المحاولات", String(summary.totalAttempts), "text-blue-600", "bg-blue-50/50 border-blue-100"],
-              ["اختبارات مجتازة", String(summary.passedCount), "text-emerald-600", "bg-emerald-50/50 border-emerald-100"],
-              ["قيد المراجعة", String(summary.reviewCount), "text-amber-600", "bg-amber-50/50 border-amber-100"],
-            ] as const
-          ).map(([label, value, color, bgClass]) => (
-            <div key={label} className={cx("rounded-2xl border p-4 shadow-2xs backdrop-blur-xs", bgClass)}>
-              <p className={cx("text-2xl font-black tabular-nums tracking-tight", color)}>{value}</p>
-              <p className="mt-1 text-xs font-bold text-slate-600">{label}</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            {
+              label: "الاختبارات المسجلة",
+              value: String(summary.totalQuizzes),
+              color: "text-indigo-600",
+              bg: "bg-indigo-50/80 border-indigo-100",
+              icon: BookOpen,
+            },
+            {
+              label: "إجمالي المحاولات",
+              value: String(summary.totalAttempts),
+              color: "text-blue-600",
+              bg: "bg-blue-50/80 border-blue-100",
+              icon: History,
+            },
+            {
+              label: "اختبارات مجتازة",
+              value: String(summary.passedCount),
+              color: "text-emerald-600",
+              bg: "bg-emerald-50/80 border-emerald-100",
+              icon: CheckCircle2,
+            },
+            {
+              label: "قيد المراجعة",
+              value: String(summary.reviewCount),
+              color: "text-amber-600",
+              bg: "bg-amber-50/80 border-amber-100",
+              icon: Clock,
+            },
+          ].map(({ label, value, color, bg, icon: Icon }) => (
+            <div
+              key={label}
+              className={cx(
+                "relative overflow-hidden rounded-3xl border p-5 shadow-sm transition-all duration-300 hover:shadow-md",
+                bg
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className={cx("text-3xl font-black tabular-nums tracking-tight", color)}>
+                    {value}
+                  </p>
+                  <p className="text-xs font-bold text-slate-600">{label}</p>
+                </div>
+                <div className={cx("rounded-2xl p-3 bg-white shadow-xs", color)}>
+                  <Icon size={22} />
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -305,7 +341,7 @@ export default function GradesPage() {
               return (
                 <div
                   key={idx}
-                  className="group relative bg-white border-2 border-slate-200/80 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:border-indigo-500 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
+                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
                 >
                   {/* شريط تزييني علوي */}
                   <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
@@ -313,11 +349,11 @@ export default function GradesPage() {
                   {/* رأس الكرت */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs">
                         <BookOpen size={13} />
                         {group.category}
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200/80">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200">
                         <History size={13} className="text-indigo-600" />
                         {group.attempts.length} محاولات
                       </span>
@@ -334,11 +370,11 @@ export default function GradesPage() {
                       </div>
                     </div>
 
-                    {/* صندوق أفضل نتيجة */}
-                    <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 space-y-2.5">
+                    {/* صندوق أفضل نتيجة بتصميم مميز */}
+                    <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/80 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-500 flex items-center gap-1.5">
-                          <Award size={15} className="text-amber-500" /> أفضل نتيجة محققة:
+                        <span className="font-bold text-slate-600 flex items-center gap-1.5">
+                          <Award size={16} className="text-amber-500" /> أفضل نتيجة:
                         </span>
                         <span className="font-black text-slate-900 text-sm">
                           {bestAttempt?.score} <span className="text-xs text-slate-400">/ {bestAttempt?.maxScore}</span>
@@ -346,10 +382,10 @@ export default function GradesPage() {
                       </div>
 
                       {/* شريط النسبة المئوية */}
-                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden p-0.5">
                         <div 
                           className={cx(
-                            "h-full rounded-full transition-all duration-500",
+                            "h-full rounded-full transition-all duration-500 shadow-xs",
                             bestPercentage >= 50 ? "bg-emerald-500" : "bg-rose-500"
                           )} 
                           style={{ width: `${Math.min(bestPercentage, 100)}%` }}
@@ -360,9 +396,9 @@ export default function GradesPage() {
 
                   {/* سجل المحاولات التفصيلي */}
                   <div className="space-y-3 pt-3 border-t border-slate-100">
-                    <span className="block text-xs font-black text-slate-800">تفاصيل المحاولات السابقة:</span>
+                    <span className="block text-xs font-black text-slate-800">سجل المحاولات السابقة:</span>
                     
-                    <div className="max-h-52 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
                         const StatusIcon = style.icon;
@@ -370,32 +406,34 @@ export default function GradesPage() {
                         return (
                           <div 
                             key={att.id || attIdx} 
-                            className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-2 text-xs transition-all hover:bg-white hover:shadow-xs"
+                            className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 space-y-2 text-xs transition-all hover:bg-white hover:shadow-sm"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-black text-slate-800">
-                                المحاولة رقم ({group.attempts.length - attIdx})
+                                المحاولة ({group.attempts.length - attIdx})
                               </span>
-                              <span className={cx("px-2.5 py-0.5 rounded-full border text-[11px] font-black inline-flex items-center gap-1", style.className)}>
-                                <StatusIcon size={12} />
+                              <span className={cx("px-3 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1.5 shadow-2xs", style.className)}>
+                                <StatusIcon size={13} />
                                 {style.label}
                               </span>
                             </div>
 
-                            <div className="flex items-center justify-between text-slate-600 font-semibold">
-                              <span>الدرجة:</span>
+                            <div className="flex items-center justify-between text-slate-600 font-semibold pt-0.5">
+                              <span>الدرجة المحققة:</span>
                               <span className="font-black text-indigo-700">{att.score} من {att.maxScore} ({att.percentage}%)</span>
                             </div>
 
                             {att.feedback && (
-                              <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                                <strong className="block font-bold mb-0.5">ملاحظات المعلم:</strong>
+                              <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                                <strong className="block font-bold mb-0.5 flex items-center gap-1">
+                                  <Sparkles size={12} className="text-amber-600" /> ملاحظات المعلم:
+                                </strong>
                                 {att.feedback}
                               </div>
                             )}
 
                             {att.submittedAt && (
-                              <div className="text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-200/50 flex items-center gap-1">
+                              <div className="text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 flex items-center gap-1">
                                 <Clock size={11} className="text-slate-400" />
                                 <span>تاريخ التسليم: {formatDate(att.submittedAt)}</span>
                               </div>
