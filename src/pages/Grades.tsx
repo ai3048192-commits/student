@@ -48,10 +48,10 @@ interface GroupedGrade {
 const PASS_MARK = 50;
 const LOCALE = "ar-EG-u-nu-latn";
 
-const STATE_STYLE: Record<GradeState, { label: string; className: string; icon: any }> = {
-  passed: { label: "ناجح", className: "border-emerald-200 bg-emerald-50/80 text-emerald-700", icon: CheckCircle2 },
-  review: { label: "قيد المراجعة", className: "border-amber-200 bg-amber-50/80 text-amber-700", icon: Clock },
-  failed: { label: "لم يجتز", className: "border-rose-200 bg-rose-50/80 text-rose-700", icon: AlertTriangle },
+const STATE_STYLE: Record<GradeState, { label: string; className: string; badgeBg: string; icon: any }> = {
+  passed: { label: "ناجح", className: "text-emerald-700 bg-emerald-50 border-emerald-200", badgeBg: "bg-emerald-500", icon: CheckCircle2 },
+  review: { label: "قيد المراجعة", className: "text-amber-700 bg-amber-50 border-amber-200", badgeBg: "bg-amber-500", icon: Clock },
+  failed: { label: "لم يجتز", className: "text-rose-700 bg-rose-50 border-rose-200", badgeBg: "bg-rose-500", icon: AlertTriangle },
 };
 
 /* ================================================================== */
@@ -230,47 +230,15 @@ export default function GradesPage() {
       {status === "ready" && groupedGrades.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            {
-              label: "الاختبارات المسجلة",
-              value: String(summary.totalQuizzes),
-              color: "text-indigo-600",
-              bg: "bg-indigo-50/80 border-indigo-100",
-              icon: BookOpen,
-            },
-            {
-              label: "إجمالي المحاولات",
-              value: String(summary.totalAttempts),
-              color: "text-blue-600",
-              bg: "bg-blue-50/80 border-blue-100",
-              icon: History,
-            },
-            {
-              label: "اختبارات مجتازة",
-              value: String(summary.passedCount),
-              color: "text-emerald-600",
-              bg: "bg-emerald-50/80 border-emerald-100",
-              icon: CheckCircle2,
-            },
-            {
-              label: "قيد المراجعة",
-              value: String(summary.reviewCount),
-              color: "text-amber-600",
-              bg: "bg-amber-50/80 border-amber-100",
-              icon: Clock,
-            },
+            { label: "الاختبارات المسجلة", value: String(summary.totalQuizzes), color: "text-indigo-600", bg: "bg-indigo-50/80 border-indigo-100", icon: BookOpen },
+            { label: "إجمالي المحاولات", value: String(summary.totalAttempts), color: "text-blue-600", bg: "bg-blue-50/80 border-blue-100", icon: History },
+            { label: "اختبارات مجتازة", value: String(summary.passedCount), color: "text-emerald-600", bg: "bg-emerald-50/80 border-emerald-100", icon: CheckCircle2 },
+            { label: "قيد المراجعة", value: String(summary.reviewCount), color: "text-amber-600", bg: "bg-amber-50/80 border-amber-100", icon: Clock },
           ].map(({ label, value, color, bg, icon: Icon }) => (
-            <div
-              key={label}
-              className={cx(
-                "relative overflow-hidden rounded-3xl border p-5 shadow-sm transition-all duration-300 hover:shadow-md",
-                bg
-              )}
-            >
+            <div key={label} className={cx("relative overflow-hidden rounded-3xl border p-5 shadow-sm transition-all duration-300 hover:shadow-md", bg)}>
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className={cx("text-3xl font-black tabular-nums tracking-tight", color)}>
-                    {value}
-                  </p>
+                  <p className={cx("text-3xl font-black tabular-nums tracking-tight", color)}>{value}</p>
                   <p className="text-xs font-bold text-slate-600">{label}</p>
                 </div>
                 <div className={cx("rounded-2xl p-3 bg-white shadow-xs", color)}>
@@ -317,11 +285,7 @@ export default function GradesPage() {
             <AlertTriangle size={40} className="mx-auto text-rose-500" />
             <p className="text-sm font-bold text-slate-700">تعذّر جلب الدرجات.</p>
             <p className="mx-auto max-w-md text-xs text-slate-500">{loadError}</p>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700"
-            >
+            <button type="button" onClick={() => void load()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700">
               إعادة المحاولة
             </button>
           </div>
@@ -339,10 +303,8 @@ export default function GradesPage() {
               const bestPercentage = bestAttempt ? bestAttempt.percentage : 0;
 
               return (
-                <div
-                  key={idx}
-                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
-                >
+                <div key={idx} className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden">
+                  
                   {/* شريط تزييني علوي */}
                   <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
 
@@ -370,7 +332,7 @@ export default function GradesPage() {
                       </div>
                     </div>
 
-                    {/* صندوق أفضل نتيجة بتصميم مميز */}
+                    {/* صندوق أفضل نتيجة */}
                     <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/80 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-slate-600 flex items-center gap-1.5">
@@ -381,7 +343,6 @@ export default function GradesPage() {
                         </span>
                       </div>
 
-                      {/* شريط النسبة المئوية */}
                       <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden p-0.5">
                         <div 
                           className={cx(
@@ -394,11 +355,11 @@ export default function GradesPage() {
                     </div>
                   </div>
 
-                  {/* سجل المحاولات التفصيلي - التصميم الأفقي الجديد والأنيق */}
+                  {/* سجل المحاولات التفصيلي بتصميم عصري جديد */}
                   <div className="space-y-3 pt-3 border-t border-slate-100">
                     <span className="block text-xs font-black text-slate-800">سجل المحاولات السابقة:</span>
                     
-                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    <div className="max-h-60 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
                         const StatusIcon = style.icon;
@@ -406,39 +367,49 @@ export default function GradesPage() {
                         return (
                           <div 
                             key={att.id || attIdx} 
-                            className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 transition-all hover:bg-white hover:shadow-xs space-y-2"
+                            className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs transition-all hover:shadow-md hover:border-indigo-200 space-y-3"
                           >
-                            {/* سطر أفقي يجمع رقم المحاولة مع الحالة والدرجة */}
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-black text-slate-800 shrink-0">
-                                المحاولة ({group.attempts.length - attIdx})
+                            {/* شريط جانبي ملون يوضح حالة المحاولة */}
+                            <div className={cx("absolute top-0 right-0 bottom-0 w-1.5", style.badgeBg)} />
+
+                            {/* الصف العلوي: رقم المحاولة والحالة */}
+                            <div className="flex items-center justify-between pl-1">
+                              <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                                <History size={14} className="text-indigo-500" />
+                                المحاولة رقم ({group.attempts.length - attIdx})
                               </span>
+                              <span className={cx("px-3 py-1 rounded-full border text-[11px] font-bold inline-flex items-center gap-1.5 shadow-2xs", style.className)}>
+                                <StatusIcon size={13} />
+                                {style.label}
+                              </span>
+                            </div>
 
+                            {/* عرض النتيجة بتصميم بطاقة مصغرة أنيقة بدل النص البسيط */}
+                            <div className="flex items-center justify-between rounded-xl bg-slate-50/80 p-2.5 border border-slate-100">
+                              <span className="text-[11px] font-bold text-slate-500">النتيجة المحققة:</span>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-xl border border-indigo-100">
-                                  {att.score} من {att.maxScore} <span className="text-[10px] text-slate-500">({att.percentage}%)</span>
+                                <span className="text-xs font-black text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                  {att.score} <span className="text-[10px] text-slate-400">/ {att.maxScore}</span>
                                 </span>
-
-                                <span className={cx("px-2.5 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1 shadow-2xs shrink-0", style.className)}>
-                                  <StatusIcon size={12} />
-                                  {style.label}
+                                <span className={cx("text-[11px] font-black px-2 py-0.5 rounded-md", att.percentage >= 50 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50")}>
+                                  {att.percentage}%
                                 </span>
                               </div>
                             </div>
 
-                            {/* ملاحظات المعلم إذا وجدت */}
+                            {/* ملاحظات المعلم إن وجدت */}
                             {att.feedback && (
-                              <div className="p-2 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                                <strong className="block font-bold mb-0.5 flex items-center gap-1">
-                                  <Sparkles size={11} className="text-amber-600" /> ملاحظات المعلم:
+                              <div className="rounded-xl bg-amber-50/80 border border-amber-200 p-2.5 text-[11px] text-amber-900 leading-relaxed">
+                                <strong className="block font-bold mb-0.5 flex items-center gap-1 text-amber-800">
+                                  <Sparkles size={12} className="text-amber-600" /> ملاحظات المعلم:
                                 </strong>
                                 {att.feedback}
                               </div>
                             )}
 
-                            {/* تاريخ التسليم في الأسفل */}
+                            {/* تاريخ التسليم */}
                             {att.submittedAt && (
-                              <div className="text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-200/50 flex items-center gap-1">
+                              <div className="text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-100 flex items-center gap-1">
                                 <Clock size={11} className="text-slate-400" />
                                 <span>تاريخ التسليم: {formatDate(att.submittedAt)}</span>
                               </div>
