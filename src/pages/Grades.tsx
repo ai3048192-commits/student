@@ -12,6 +12,9 @@ import {
   Sparkles,
   User,
   History,
+  Award,
+  BookOpen,
+  ChevronLeft
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -19,7 +22,6 @@ import { supabase } from "../lib/supabaseClient";
 /*  Types                                                             */
 /* ================================================================== */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 type PageStatus = "loading" | "ready" | "no-user" | "error";
 type GradeState = "passed" | "review" | "failed";
@@ -47,14 +49,14 @@ interface GroupedGrade {
 const PASS_MARK = 50;
 const LOCALE = "ar-EG-u-nu-latn";
 
-const STATE_STYLE: Record<GradeState, { label: string; className: string }> = {
-  passed: { label: "ناجح", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  review: { label: "قيد المراجعة", className: "border-amber-200 bg-amber-50 text-amber-700" },
-  failed: { label: "لم يجتز", className: "border-rose-200 bg-rose-50 text-rose-700" },
+const STATE_STYLE: Record<GradeState, { label: string; className: string; icon: any }> = {
+  passed: { label: "ناجح", className: "border-emerald-200 bg-emerald-50/80 text-emerald-700", icon: CheckCircle2 },
+  review: { label: "قيد المراجعة", className: "border-amber-200 bg-amber-50/80 text-amber-700", icon: Clock },
+  failed: { label: "لم يجتز", className: "border-rose-200 bg-rose-50/80 text-rose-700", icon: AlertTriangle },
 };
 
 /* ================================================================== */
-/*  Helpers                                                           */
+/*  Helpers                                                             */
 /* ================================================================== */
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
@@ -74,7 +76,7 @@ const formatDate = (value?: string | null) => {
 };
 
 /* ================================================================== */
-/*  Page                                                              */
+/*  Page                                                             */
 /* ================================================================== */
 
 export default function GradesPage() {
@@ -118,7 +120,6 @@ export default function GradesPage() {
       const quizMap = new Map(quizzes.map((q) => [q.id, q]));
       const courseMap = new Map(courses.map((c) => [c.id, c]));
 
-      // تجميع المحاولات حسب quiz_id
       const mapByQuiz = new Map<any, GroupedGrade>();
 
       rows.forEach((row: Row) => {
@@ -145,7 +146,7 @@ export default function GradesPage() {
         if (!mapByQuiz.has(quizId)) {
           mapByQuiz.set(quizId, {
             quizId,
-            courseName: row.course_name || quiz?.course_name || course?.course_name || "غير مححدد",
+            courseName: row.course_name || quiz?.course_name || course?.course_name || "غير محدد",
             instructor: quiz?.teacher_name || quiz?.instructor || course?.instructor || "غير محدد",
             category: row.specialty || course?.course_specialty || quiz?.course_specialty || "عام",
             attempts: [],
@@ -158,6 +159,7 @@ export default function GradesPage() {
         group.attempts.push(attempt);
         if (score > group.bestScore) {
           group.bestScore = score;
+          group.maxScore = maxScore;
         }
       });
 
@@ -196,30 +198,28 @@ export default function GradesPage() {
   }, [groupedGrades]);
 
   return (
-    <div className="mx-auto min-h-screen w-full space-y-6 text-slate-800 sm:space-y-8" dir="rtl">
+    <div className="mx-auto min-h-screen w-full space-y-6 text-slate-800 sm:space-y-8 pb-12" dir="rtl">
+      
       {/* ------------------------------ Header ------------------------------ */}
-      <header className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-emerald-600 via-blue-600 to-indigo-700 p-5 text-white shadow-xl sm:rounded-3xl sm:p-8">
-        <div aria-hidden className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-          <div className="space-y-2 sm:space-y-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/20 px-3 py-1 text-[11px] font-bold text-white shadow-xs backdrop-blur-md sm:text-xs">
-              <Sparkles size={14} />
-              لوحة متابعة الدرجات والمحاولات، منصة
-              <span dir="ltr" className="tracking-[0.3em]">
-                ZED
-              </span>
+      <header className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-l from-indigo-900 via-slate-900 to-blue-950 p-6 sm:p-8 text-white shadow-xl">
+        <div aria-hidden className="pointer-events-none absolute -bottom-10 -left-10 h-56 w-56 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3.5 py-1 text-xs font-semibold text-indigo-200 backdrop-blur-md">
+              <Sparkles size={14} className="text-amber-400" />
+              منصة Z E D - لوحة متابعة إنجازاتك
             </span>
-            <h1 className="text-xl font-black leading-tight tracking-tight sm:text-3xl lg:text-4xl">
-              سجل إنجازاتك ومحاولاتك الفعلية 📊
+            <h1 className="text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">
+              سجل اختباراتك ومحاولاتك الذكية 📊
             </h1>
-            <p className="max-w-2xl text-xs leading-relaxed text-blue-100 sm:text-sm">
-              يتم تجميع كافة محاولاتك لكل اختبار داخل كرت موحد لتتمكن من متابعة تطور مستواك بكل سهولة.
+            <p className="max-w-2xl text-xs leading-relaxed text-slate-300 sm:text-sm">
+              متابعة شاملة لتطور مستواك الأكاديمي، يتم تجميع جميع محاولاتك لكل اختبار داخل بطاقة واحدة لسهولة المراجعة.
             </p>
           </div>
 
           <Link
             to="/courses"
-            className="flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-white px-4 py-2.5 text-xs font-black text-blue-700 shadow-md transition-all hover:bg-blue-50 active:scale-95 sm:self-auto sm:rounded-2xl sm:px-5 sm:py-3"
+            className="flex shrink-0 items-center justify-center gap-2 self-stretch rounded-2xl bg-white px-5 py-3 text-xs font-black text-indigo-950 shadow-md transition-all hover:bg-indigo-50 active:scale-95 sm:self-auto"
           >
             <ArrowRight size={16} />
             العودة للكورسات
@@ -232,44 +232,44 @@ export default function GradesPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {(
             [
-              ["الاختبارات المُجتازة", String(summary.totalQuizzes), "text-slate-900"],
-              ["إجمالي المحاولات", String(summary.totalAttempts), "text-blue-600"],
-              ["اختار بنجاح", String(summary.passedCount), "text-emerald-600"],
-              ["قيد المراجعة", String(summary.reviewCount), "text-amber-600"],
+              ["الاختبارات المسجلة", String(summary.totalQuizzes), "text-slate-900", "bg-slate-50 border-slate-200"],
+              ["إجمالي المحاولات", String(summary.totalAttempts), "text-blue-600", "bg-blue-50/50 border-blue-100"],
+              ["اختبارات مجتازة", String(summary.passedCount), "text-emerald-600", "bg-emerald-50/50 border-emerald-100"],
+              ["قيد المراجعة", String(summary.reviewCount), "text-amber-600", "bg-amber-50/50 border-amber-100"],
             ] as const
-          ).map(([label, value, color]) => (
-            <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-              <p className={cx("text-2xl font-black tabular-nums", color)}>{value}</p>
-              <p className="mt-0.5 text-[11px] font-bold text-slate-500">{label}</p>
+          ).map(([label, value, color, bgClass]) => (
+            <div key={label} className={cx("rounded-2xl border p-4 shadow-2xs backdrop-blur-xs", bgClass)}>
+              <p className={cx("text-2xl font-black tabular-nums tracking-tight", color)}>{value}</p>
+              <p className="mt-1 text-xs font-bold text-slate-600">{label}</p>
             </div>
           ))}
         </div>
       )}
 
       {/* ------------------------------ List ------------------------------ */}
-      <section className="space-y-4 sm:space-y-6">
+      <section className="space-y-4">
         <div className="flex items-center justify-between gap-3 px-1">
           <h2 className="flex items-center gap-2 text-base font-black text-slate-800 sm:text-lg">
-            <FileText size={20} className="text-blue-600" />
-            سجل الاختبارات والمحاولات المسجلة
+            <FileText size={20} className="text-indigo-600" />
+            البطاقات المجمعة للاختبارات
           </h2>
           {status === "ready" && (
             <button
               type="button"
               onClick={() => void load(true)}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 disabled:opacity-50 cursor-pointer shadow-2xs"
             >
               <RefreshCw size={13} className={refreshing ? "animate-spin" : undefined} />
-              تحديث
+              <span>تحديث البيانات</span>
             </button>
           )}
         </div>
 
         {status === "loading" ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white py-20 text-center shadow-xs">
-            <Loader2 size={36} className="animate-spin text-blue-600" />
-            <p className="text-xs font-bold text-slate-600">جاري جلب درجاتك...</p>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white py-24 text-center shadow-xs">
+            <Loader2 size={36} className="animate-spin text-indigo-600" />
+            <p className="text-xs font-bold text-slate-600">جاري جلب سجل درجاتك...</p>
           </div>
         ) : status === "no-user" ? (
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-16 text-center shadow-xs">
@@ -284,91 +284,132 @@ export default function GradesPage() {
             <button
               type="button"
               onClick={() => void load()}
-              className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700"
             >
               إعادة المحاولة
             </button>
           </div>
         ) : groupedGrades.length === 0 ? (
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-16 text-center shadow-xs">
-            <BarChart3 size={40} className="mx-auto text-blue-400" />
-            <p className="text-sm font-bold text-slate-700">لا توجد درجات مسجلة حتى الآن.</p>
+            <BarChart3 size={40} className="mx-auto text-indigo-400" />
+            <p className="text-sm font-bold text-slate-700">لا توجد درجات أو اختبارات مسجلة حتى الآن.</p>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {groupedGrades.map((group, idx) => {
-              return (
-                <li
-                  key={idx}
-                  className="group flex flex-col justify-between space-y-4 rounded-2xl border-2 border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-300 hover:border-blue-500 hover:shadow-xl sm:space-y-5 sm:rounded-3xl sm:p-6"
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <span className="max-w-[130px] truncate rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                      {group.category}
-                    </span>
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700">
-                      <History size={12} />
-                      عدد المحاولات: {group.attempts.length}
-                    </span>
-                  </div>
+              const bestAttempt = group.attempts.reduce((prev, current) => 
+                (current.score > prev.score) ? current : prev, group.attempts[0]
+              );
+              const bestPercentage = bestAttempt ? bestAttempt.percentage : 0;
 
-                  <div className="flex-1 space-y-3">
-                    <div className="space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-400">اسم المادة / الكورس</span>
-                      <h3 className="text-sm font-black leading-snug text-slate-900 transition-colors group-hover:text-blue-600 sm:text-base">
+              return (
+                <div
+                  key={idx}
+                  className="group relative bg-white border-2 border-slate-200/80 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:border-indigo-500 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
+                >
+                  {/* شريط تزييني علوي */}
+                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
+
+                  {/* رأس الكرت */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <BookOpen size={13} />
+                        {group.category}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200/80">
+                        <History size={13} className="text-indigo-600" />
+                        {group.attempts.length} محاولات
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
                         {group.courseName}
                       </h3>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
+                        <User size={14} className="text-indigo-500 shrink-0" />
+                        <span>المعلم:</span>
+                        <span className="font-bold text-slate-700">{group.instructor}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-xs text-slate-600">
-                      <User size={14} className="shrink-0 text-blue-500" />
-                      <span className="text-[10px] text-slate-400">المعلم:</span>
-                      <span className="truncate font-bold text-slate-700">{group.instructor}</span>
+                    {/* صندوق أفضل نتيجة */}
+                    <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-500 flex items-center gap-1.5">
+                          <Award size={15} className="text-amber-500" /> أفضل نتيجة محققة:
+                        </span>
+                        <span className="font-black text-slate-900 text-sm">
+                          {bestAttempt?.score} <span className="text-xs text-slate-400">/ {bestAttempt?.maxScore}</span>
+                        </span>
+                      </div>
+
+                      {/* شريط النسبة المئوية */}
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={cx(
+                            "h-full rounded-full transition-all duration-500",
+                            bestPercentage >= 50 ? "bg-emerald-500" : "bg-rose-500"
+                          )} 
+                          style={{ width: `${Math.min(bestPercentage, 100)}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* تفاصيل المحاولات المتعددة داخل نفس الكرت */}
-                  <div className="space-y-2.5 border-t border-slate-100 pt-3 text-xs font-semibold">
-                    <span className="block text-[11px] font-black text-slate-700">سجل المحاولات ({group.attempts.length}):</span>
+                  {/* سجل المحاولات التفصيلي */}
+                  <div className="space-y-3 pt-3 border-t border-slate-100">
+                    <span className="block text-xs font-black text-slate-800">تفاصيل المحاولات السابقة:</span>
                     
-                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    <div className="max-h-52 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
+                        const StatusIcon = style.icon;
+                        
                         return (
-                          <div key={att.id || attIdx} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-[11px]">
+                          <div 
+                            key={att.id || attIdx} 
+                            className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-2 text-xs transition-all hover:bg-white hover:shadow-xs"
+                          >
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-slate-700">المحاولة #{group.attempts.length - attIdx}</span>
-                              <span className={cx("px-2 py-0.5 rounded-full border text-[10px] font-black", style.className)}>
-                                {att.state === "review" ? <Clock size={10} className="inline ml-1" /> : <CheckCircle2 size={10} className="inline ml-1" />}
+                              <span className="font-black text-slate-800">
+                                المحاولة رقم ({group.attempts.length - attIdx})
+                              </span>
+                              <span className={cx("px-2.5 py-0.5 rounded-full border text-[11px] font-black inline-flex items-center gap-1", style.className)}>
+                                <StatusIcon size={12} />
                                 {style.label}
                               </span>
                             </div>
 
-                            {att.state !== "review" && (
-                              <div className="flex items-center justify-between text-slate-600">
-                                <span>الدرجة:</span>
-                                <strong className="text-blue-700 font-black">{att.score} / {att.maxScore}</strong>
+                            <div className="flex items-center justify-between text-slate-600 font-semibold">
+                              <span>الدرجة:</span>
+                              <span className="font-black text-indigo-700">{att.score} من {att.maxScore} ({att.percentage}%)</span>
+                            </div>
+
+                            {att.feedback && (
+                              <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                                <strong className="block font-bold mb-0.5">ملاحظات المعلم:</strong>
+                                {att.feedback}
                               </div>
                             )}
 
-                            {att.feedback && (
-                              <p className="text-amber-800 bg-amber-50 p-1.5 rounded border border-amber-200">
-                                <strong>ملاحظات:</strong> {att.feedback}
-                              </p>
-                            )}
-
                             {att.submittedAt && (
-                              <p className="text-[9px] text-slate-400">التاريخ: {formatDate(att.submittedAt)}</p>
+                              <div className="text-[10px] text-slate-400 font-medium pt-1 border-t border-slate-200/50 flex items-center gap-1">
+                                <Clock size={11} className="text-slate-400" />
+                                <span>تاريخ التسليم: {formatDate(att.submittedAt)}</span>
+                              </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                </li>
+
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </section>
     </div>
