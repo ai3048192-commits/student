@@ -38,11 +38,12 @@ export default function CoursesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedText, setCopiedText] = useState("");
 
-  const [teacherPaymentInfo, setTeacherPaymentInfo] = useState({
-    name: "المعلم",
-    vodafone_cash_number: "غير محدد",
-    instapay_username: "غير محدد"
-  });
+  // بيانات الدفع لكل كورس على حدة، من صاحب الكورس نفسه.
+  // الكود القديم كان بيجيب أول معلم في الجدول ويعرض رقمه في كل الكورسات،
+  // فالطالب ممكن يحوّل فلوسه لمعلم غير صاحب الكورس.
+  const [paymentByCourse, setPaymentByCourse] = useState<
+    Map<number, { teacherName: string; vodafone: string; instapay: string }>
+  >(new Map());
 
   const fetchSupabaseCourses = async () => {
     try {
@@ -55,22 +56,23 @@ export default function CoursesPage() {
       
       if (coursesError) throw coursesError;
 
-      const { data: teacherData, error: teacherError } = await supabase
-        .from("teachers_profile")
-        .select("name, vodafone_cash_number, instapay_username")
-        .maybeSingle();
+      // teachers_profile مقفول على صاحبه (فيه صور البطاقة)، فالطالب مش بيشوف منه
+      // أي حاجة. course_payment_info بيعرض الاسم وأرقام الدفع بس، لكل كورس.
+      const { data: payData, error: payError } = await supabase
+        .from("course_payment_info")
+        .select("course_id, teacher_name, vodafone_cash_number, instapay_username");
 
-      if (teacherError) console.error("Error fetching teacher profile:", teacherError.message);
-      
-      if (teacherData) {
-        setTeacherPaymentInfo({
-          name: teacherData.name || "المعلم",
-          vodafone_cash_number: teacherData.vodafone_cash_number || "غير محدد",
-          instapay_username: teacherData.instapay_username || "غير محدد"
+      if (payError) console.error("Error fetching payment info:", payError.message);
+
+      const payMap = new Map<number, { teacherName: string; vodafone: string; instapay: string }>();
+      (payData || []).forEach((row: any) => {
+        payMap.set(row.course_id, {
+          teacherName: row.teacher_name || "المعلم",
+          vodafone: (row.vodafone_cash_number || "").trim(),
+          instapay: (row.instapay_username || "").trim(),
         });
-      }
-
-      const realTeacherName = teacherData?.name || "المعلم";
+      });
+      setPaymentByCourse(payMap);
 
       const { data: subsData, error: subsError } = await supabase
         .from("subscriptions")
@@ -81,6 +83,12 @@ export default function CoursesPage() {
       const activeCourseIds = new Set(
         (subsData || [])
           .filter((sub: any) => sub.status === "active")
+          .map((sub: any) => sub.course_id)
+      );
+      // الطلبات اللي لسه قيد المراجعة، عشان الطالب ميبعتش نفس الطلب مرتين
+      const pendingCourseIds = new Set(
+        (subsData || [])
+          .filter((sub: any) => sub.status === "pending")
           .map((sub: any) => sub.course_id)
       );
 
@@ -95,7 +103,9 @@ export default function CoursesPage() {
           }
 
           const isEnrolled = activeCourseIds.has(item.id);
-          const courseInstructor = item.instructor && item.instructor !== "المعلم" ? item.instructor : realTeacherName;
+          const isPending = !isEnrolled && pendingCourseIds.has(item.id);
+          const courseInstructor =
+            item.instructor && item.instructor !== "المعلم" ? item.instructor : payMap.get(item.id)?.teacherName || "المعلم";
 
           return {
             id: item.id,
@@ -106,7 +116,7 @@ export default function CoursesPage() {
             categoryName: item.course_specialty || "عام",
             duration: item.show_times || "مفتوح دائماً",
             totalLessons: item.video_count || 0,
-            status: isEnrolled ? "enrolled" : "available",
+            status: isEnrolled ? "enrolled" : isPending ? "pending" : "available",
             imageBg: "from-blue-600 to-indigo-700",
             rating: 4.8,
             price: displayPrice,
@@ -149,13 +159,21 @@ export default function CoursesPage() {
       alert("الرجاء إكمال جميع البيانات وإرفاق صورة الإيصال");
       return;
     }
+    if (!selectedPayTarget) {
+      alert("المعلم لم يضف بيانات هذه الوسيلة بعد. اختر وسيلة الدفع الأخرى أو تواصل مع المعلم.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
 
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("يجب تسجيل الدخول أولاً.");
+
       const fileExt = receiptFile.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      // الإيصال في فولدر باسم الطالب، عشان كل طالب إيصالاته في مكان واحد
+      const filePath = `${auth.user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('payment-receipts')
@@ -195,6 +213,9 @@ export default function CoursesPage() {
       setIsSubmitting(false);
     }
   };
+
+  const selectedPay = selectedCourseToSubscribe ? paymentByCourse.get(selectedCourseToSubscribe.id) : undefined;
+  const selectedPayTarget = paymentMethod === "vodafone" ? selectedPay?.vodafone : selectedPay?.instapay;
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -399,6 +420,11 @@ export default function CoursesPage() {
                         <PlayCircle size={18} />
                         <span>مشاهدة محتوى الكورس</span>
                       </Link>
+                    ) : course.status === 'pending' ? (
+                      <div className="w-full py-3 px-4 bg-amber-50 text-amber-800 border-2 border-amber-200 rounded-2xl flex items-center justify-center gap-2 font-black">
+                        <FileCheck size={18} />
+                        <span>طلبك قيد مراجعة المعلم</span>
+                      </div>
                     ) : (
                       <button
                         onClick={() => setSelectedCourseToSubscribe(course)}
@@ -509,16 +535,17 @@ export default function CoursesPage() {
                     <span className="px-2 py-0.5 bg-white/15 rounded-lg text-[10px] text-amber-300">مباشر</span>
                   </div>
 
+                  {selectedPayTarget ? (
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-sm sm:text-base font-black tracking-wider text-white select-all font-mono">
-                      {paymentMethod === "vodafone" ? teacherPaymentInfo.vodafone_cash_number : teacherPaymentInfo.instapay_username}
+                    <span dir="ltr" className="text-sm sm:text-base font-black tracking-wider text-white select-all font-mono">
+                      {selectedPayTarget}
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopyText(paymentMethod === "vodafone" ? teacherPaymentInfo.vodafone_cash_number : teacherPaymentInfo.instapay_username)}
+                      onClick={() => handleCopyText(selectedPayTarget)}
                       className="px-3 py-1.5 bg-white text-blue-950 hover:bg-blue-50 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
                     >
-                      {copiedText === (paymentMethod === "vodafone" ? teacherPaymentInfo.vodafone_cash_number : teacherPaymentInfo.instapay_username) ? (
+                      {copiedText === selectedPayTarget ? (
                         <>
                           <Check size={14} className="text-emerald-600" />
                           <span className="text-emerald-700">تم النسخ</span>
@@ -531,6 +558,17 @@ export default function CoursesPage() {
                       )}
                     </button>
                   </div>
+                  ) : (
+                    <p className="pt-1 text-xs font-bold leading-relaxed text-amber-300">
+                      المعلم لم يضف {paymentMethod === "vodafone" ? "رقم فودافون كاش" : "عنوان إنستاباي"} بعد.
+                      {(paymentMethod === "vodafone" ? selectedPay?.instapay : selectedPay?.vodafone)
+                        ? " جرّب الوسيلة الأخرى."
+                        : " تواصل مع المعلم قبل التحويل."}
+                    </p>
+                  )}
+                  {selectedPay?.teacherName && (
+                    <p className="text-[10px] font-bold text-blue-200">باسم: {selectedPay.teacherName}</p>
+                  )}
                 </div>
 
                 {/* رقم الهاتف المحول منه */}
@@ -595,7 +633,7 @@ export default function CoursesPage() {
               <button
                 type="submit"
                 form="subscription-form"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !selectedPayTarget}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl font-black shadow-md transition-all cursor-pointer flex items-center gap-2 text-xs"
               >
                 <ShieldCheck size={16} />
