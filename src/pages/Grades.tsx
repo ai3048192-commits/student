@@ -12,6 +12,7 @@ import {
   Sparkles,
   User,
   History,
+  Award,
   BookOpen
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
@@ -332,10 +333,15 @@ export default function GradesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {groupedGrades.map((group, idx) => {
+              const bestAttempt = group.attempts.reduce((prev, current) => 
+                (current.score > prev.score) ? current : prev, group.attempts[0]
+              );
+              const bestPercentage = bestAttempt ? bestAttempt.percentage : 0;
+
               return (
                 <div
                   key={idx}
-                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
+                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
                 >
                   {/* شريط تزييني علوي */}
                   <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
@@ -363,13 +369,36 @@ export default function GradesPage() {
                         <span className="font-bold text-slate-700">{group.instructor}</span>
                       </div>
                     </div>
+
+                    {/* صندوق أفضل نتيجة بتصميم مميز */}
+                    <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-600 flex items-center gap-1.5">
+                          <Award size={16} className="text-amber-500" /> أفضل نتيجة:
+                        </span>
+                        <span className="font-black text-slate-900 text-sm">
+                          {bestAttempt?.score} <span className="text-xs text-slate-400">/ {bestAttempt?.maxScore}</span>
+                        </span>
+                      </div>
+
+                      {/* شريط النسبة المئوية */}
+                      <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden p-0.5">
+                        <div 
+                          className={cx(
+                            "h-full rounded-full transition-all duration-500 shadow-xs",
+                            bestPercentage >= 50 ? "bg-emerald-500" : "bg-rose-500"
+                          )} 
+                          style={{ width: `${Math.min(bestPercentage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* سجل المحاولات التفصيلي */}
                   <div className="space-y-3 pt-3 border-t border-slate-100">
                     <span className="block text-xs font-black text-slate-800">سجل المحاولات السابقة:</span>
                     
-                    <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
                         const StatusIcon = style.icon;
