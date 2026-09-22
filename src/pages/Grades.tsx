@@ -13,7 +13,8 @@ import {
   User,
   History,
   Award,
-  BookOpen
+  BookOpen,
+  Trash2
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -83,6 +84,7 @@ export default function GradesPage() {
   const [loadError, setLoadError] = useState("");
   const [groupedGrades, setGroupedGrades] = useState<GroupedGrade[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingId, setDeletingId] = useState<any>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -176,6 +178,33 @@ export default function GradesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // دالة حذف كرت الاختبار بالكامل من قاعدة البيانات والواجهة
+  const handleDeleteGroup = async (quizId: any) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذا الاختبار وكل محاولاته؟")) return;
+
+    try {
+      setDeletingId(quizId);
+      
+      let query = supabase.from("student_submissions").delete();
+      if (quizId === "general") {
+        query = query.is("quiz_id", null);
+      } else {
+        query = query.eq("quiz_id", quizId);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      // تحديث الحالة محلياً لحذف الكرت من الشاشة بدون إعادة تحميل الصفحة
+      setGroupedGrades((prev) => prev.filter((g) => g.quizId !== quizId));
+    } catch (err) {
+      console.error("خطأ أثناء حذف الاختبار:", err);
+      alert("حدث خطأ أثناء محاولة الحذف.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const summary = useMemo(() => {
     let totalAttempts = 0;
@@ -337,6 +366,7 @@ export default function GradesPage() {
                 (current.score > prev.score) ? current : prev, group.attempts[0]
               );
               const bestPercentage = bestAttempt ? bestAttempt.percentage : 0;
+              const isDeleting = deletingId === group.quizId;
 
               return (
                 <div
@@ -353,10 +383,24 @@ export default function GradesPage() {
                         <BookOpen size={13} />
                         {group.category}
                       </span>
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200">
-                        <History size={13} className="text-indigo-600" />
-                        {group.attempts.length} محاولات
-                      </span>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200">
+                          <History size={13} className="text-indigo-600" />
+                          {group.attempts.length} محاولات
+                        </span>
+                        
+                        {/* زر حذف الكرت */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGroup(group.quizId)}
+                          disabled={isDeleting}
+                          title="حذف الكرت والاختبار بالكامل"
+                          className="p-1.5 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
