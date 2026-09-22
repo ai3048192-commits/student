@@ -50,9 +50,9 @@ const PASS_MARK = 50;
 const LOCALE = "ar-EG-u-nu-latn";
 
 const STATE_STYLE: Record<GradeState, { label: string; className: string; icon: any }> = {
-  passed: { label: "ناجح", className: "border-emerald-200 bg-emerald-50/80 text-emerald-700", icon: CheckCircle2 },
-  review: { label: "قيد المراجعة", className: "border-amber-200 bg-amber-50/80 text-amber-700", icon: Clock },
-  failed: { label: "لم يجتز", className: "border-rose-200 bg-rose-50/80 text-rose-700", icon: AlertTriangle },
+  passed: { label: "ناجح", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
+  review: { label: "قيد المراجعة", className: "border-amber-200 bg-amber-50 text-amber-700", icon: Clock },
+  failed: { label: "لم يجتز", className: "border-rose-200 bg-rose-50 text-rose-700", icon: AlertTriangle },
 };
 
 /* ================================================================== */
@@ -179,7 +179,6 @@ export default function GradesPage() {
     void load();
   }, [load]);
 
-  // دالة حذف كرت الاختبار بالكامل من قاعدة البيانات والواجهة
   const handleDeleteGroup = async (quizId: any) => {
     if (!window.confirm("هل أنت متأكد من حذف هذا الاختبار وكل محاولاته؟")) return;
 
@@ -196,7 +195,6 @@ export default function GradesPage() {
       const { error } = await query;
       if (error) throw error;
 
-      // تحديث الحالة محلياً لحذف الكرت من الشاشة بدون إعادة تحميل الصفحة
       setGroupedGrades((prev) => prev.filter((g) => g.quizId !== quizId));
     } catch (err) {
       console.error("خطأ أثناء حذف الاختبار:", err);
@@ -241,7 +239,7 @@ export default function GradesPage() {
               سجل اختباراتك ومحاولاتك الذكية 📊
             </h1>
             <p className="max-w-2xl text-xs leading-relaxed text-slate-300 sm:text-sm">
-              متابعة شاملة لتطور مستواك الأكاديمي، يتم تجميع جميع محاولاتك لكل اختبار داخل بطاقة واحدة لسهولة المراجعة.
+              متابعة شاملة لتطور مستواك الأكاديمي، مع عرض متناسق وسلس لكل محاولاتك السابقة.
             </p>
           </div>
 
@@ -291,7 +289,7 @@ export default function GradesPage() {
             <div
               key={label}
               className={cx(
-                "relative overflow-hidden rounded-3xl border p-5 shadow-sm transition-all duration-300 hover:shadow-md",
+                "relative overflow-hidden rounded-3xl border p-5 shadow-xs transition-all duration-300 hover:shadow-md",
                 bg
               )}
             >
@@ -360,7 +358,7 @@ export default function GradesPage() {
             <p className="text-sm font-bold text-slate-700">لا توجد درجات أو اختبارات مسجلة حتى الآن.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6">
             {groupedGrades.map((group, idx) => {
               const bestAttempt = group.attempts.reduce((prev, current) => 
                 (current.score > prev.score) ? current : prev, group.attempts[0]
@@ -371,78 +369,80 @@ export default function GradesPage() {
               return (
                 <div
                   key={idx}
-                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between space-y-6 overflow-hidden"
+                  className="group relative bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 space-y-6 overflow-hidden"
                 >
-                  {/* شريط تزييني علوي */}
-                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
+                  {/* شريط تزييني علوي ناعم */}
+                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-400" />
 
-                  {/* رأس الكرت */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs">
-                        <BookOpen size={13} />
-                        {group.category}
-                      </span>
-                      
-                      <div className="flex items-center gap-1.5">
+                  {/* رأس الكرت ومعلومات المقرر */}
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          <BookOpen size={13} />
+                          {group.category}
+                        </span>
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-slate-100 text-slate-700 border border-slate-200">
                           <History size={13} className="text-indigo-600" />
-                          {group.attempts.length} محاولات
+                          {group.attempts.length} محاولات مسجلة
                         </span>
-                        
-                        {/* زر حذف الكرت */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGroup(group.quizId)}
-                          disabled={isDeleting}
-                          title="حذف الكرت والاختبار بالكامل"
-                          className="p-1.5 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-all disabled:opacity-50 cursor-pointer"
-                        >
-                          {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                        </button>
                       </div>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                      <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
                         {group.courseName}
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
+
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
                         <User size={14} className="text-indigo-500 shrink-0" />
                         <span>المعلم:</span>
                         <span className="font-bold text-slate-700">{group.instructor}</span>
                       </div>
                     </div>
 
-                    {/* صندوق أفضل نتيجة بتصميم مميز */}
-                    <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/80 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5">
-                          <Award size={16} className="text-amber-500" /> أفضل نتيجة:
-                        </span>
-                        <span className="font-black text-slate-900 text-sm">
-                          {bestAttempt?.score} <span className="text-xs text-slate-400">/ {bestAttempt?.maxScore}</span>
-                        </span>
-                      </div>
-
-                      {/* شريط النسبة المئوية */}
-                      <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden p-0.5">
-                        <div 
-                          className={cx(
-                            "h-full rounded-full transition-all duration-500 shadow-xs",
-                            bestPercentage >= 50 ? "bg-emerald-500" : "bg-rose-500"
-                          )} 
-                          style={{ width: `${Math.min(bestPercentage, 100)}%` }}
-                        />
-                      </div>
+                    {/* أزرار الإجراءات وحذف الكرت */}
+                    <div className="flex items-center gap-3 self-end md:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGroup(group.quizId)}
+                        disabled={isDeleting}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
+                      >
+                        {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        <span>حذف الكرت</span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* سجل المحاولات التفصيلي */}
-                  <div className="space-y-3 pt-3 border-t border-slate-100">
+                  {/* شريط أفضل نتيجة مرتب ورايق */}
+                  <div className="bg-gradient-to-l from-slate-50/80 via-indigo-50/30 to-slate-50/80 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700 shadow-xs">
+                        <Award size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-500">أفضل نتيجة محققة</p>
+                        <p className="text-base font-black text-slate-900">
+                          {bestAttempt?.score} <span className="text-xs text-slate-400 font-medium">/ {bestAttempt?.maxScore} ({bestPercentage}%)</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-full sm:w-48 bg-slate-200/70 rounded-full h-2.5 overflow-hidden p-0.5">
+                      <div 
+                        className={cx(
+                          "h-full rounded-full transition-all duration-500",
+                          bestPercentage >= 50 ? "bg-emerald-500" : "bg-rose-500"
+                        )} 
+                        style={{ width: `${Math.min(bestPercentage, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* سجل المحاولات السابقة (تظهر جنب بعض بشكل أفقي ومنظم) */}
+                  <div className="space-y-3 pt-2">
                     <span className="block text-xs font-black text-slate-800">سجل المحاولات السابقة:</span>
                     
-                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {group.attempts.map((att, attIdx) => {
                         const style = STATE_STYLE[att.state];
                         const StatusIcon = style.icon;
@@ -450,36 +450,36 @@ export default function GradesPage() {
                         return (
                           <div 
                             key={att.id || attIdx} 
-                            className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 space-y-2 text-xs transition-all hover:bg-white hover:shadow-sm"
+                            className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-3 transition-all hover:bg-white hover:shadow-md flex flex-col justify-between"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-black text-slate-800">
+                              <span className="font-black text-xs text-slate-800">
                                 المحاولة ({group.attempts.length - attIdx})
                               </span>
-                              <span className={cx("px-3 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1.5 shadow-2xs", style.className)}>
-                                <StatusIcon size={13} />
+                              <span className={cx("px-2.5 py-1 rounded-full border text-[11px] font-black inline-flex items-center gap-1", style.className)}>
+                                <StatusIcon size={12} />
                                 {style.label}
                               </span>
                             </div>
 
-                            <div className="flex items-center justify-between text-slate-600 font-semibold pt-0.5">
-                              <span>الدرجة المحققة:</span>
-                              <span className="font-black text-indigo-700">{att.score} من {att.maxScore} ({att.percentage}%)</span>
+                            <div className="flex items-center justify-between text-xs text-slate-600 font-medium pt-1 border-t border-slate-200/40">
+                              <span>الدرجة:</span>
+                              <span className="font-black text-indigo-700">{att.score} / {att.maxScore} ({att.percentage}%)</span>
                             </div>
 
                             {att.feedback && (
-                              <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
                                 <strong className="block font-bold mb-0.5 flex items-center gap-1">
-                                  <Sparkles size={12} className="text-amber-600" /> ملاحظات المعلم:
+                                  <Sparkles size={11} className="text-amber-600" /> ملاحظات المعلم:
                                 </strong>
                                 {att.feedback}
                               </div>
                             )}
 
                             {att.submittedAt && (
-                              <div className="text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 flex items-center gap-1">
+                              <div className="text-[10px] text-slate-400 font-medium pt-2 border-t border-slate-200/50 flex items-center gap-1">
                                 <Clock size={11} className="text-slate-400" />
-                                <span>تاريخ التسليم: {formatDate(att.submittedAt)}</span>
+                                <span>{formatDate(att.submittedAt)}</span>
                               </div>
                             )}
                           </div>
