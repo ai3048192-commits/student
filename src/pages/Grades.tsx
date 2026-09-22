@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Sparkles,
   User,
+  History,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -23,17 +24,24 @@ type Row = Record<string, any>;
 type PageStatus = "loading" | "ready" | "no-user" | "error";
 type GradeState = "passed" | "review" | "failed";
 
-interface Grade {
+interface Attempt {
   id: number;
-  courseName: string;
-  instructor: string;
-  category: string;
   score: number;
   maxScore: number;
   percentage: number;
   state: GradeState;
   feedback: string;
   submittedAt: string;
+}
+
+interface GroupedGrade {
+  quizId: any;
+  courseName: string;
+  instructor: string;
+  category: string;
+  attempts: Attempt[];
+  bestScore: number;
+  maxScore: number;
 }
 
 const PASS_MARK = 50;
@@ -65,27 +73,6 @@ const formatDate = (value?: string | null) => {
   return Number.isNaN(t) ? String(value) : new Date(t).toLocaleDateString(LOCALE, { dateStyle: "medium" });
 };
 
-// max_score بيتقرا من الجدول بدل ما نفترض 100 دايماً زي الكود القديم
-const toGrade = (row: Row, quiz: Row | undefined, course: Row | undefined): Grade => {
-  const score = Number(row.score) || 0;
-  const maxScore = Number(row.max_score) > 0 ? Number(row.max_score) : 100;
-  const percentage = Math.round((score / maxScore) * 100);
-  const graded = row.status === "تم التصحيح" || row.status === "graded" || row.score != null;
-
-  return {
-    id: row.id,
-    courseName: row.course_name || quiz?.course_name || course?.course_name || "غير محدد",
-    instructor: quiz?.teacher_name || quiz?.instructor || course?.instructor || "غير محدد",
-    category: row.specialty || course?.course_specialty || quiz?.course_specialty || "عام",
-    score,
-    maxScore,
-    percentage,
-    state: !graded ? "review" : percentage >= PASS_MARK ? "passed" : "failed",
-    feedback: row.feedback || row.notes || "",
-    submittedAt: row.submission_time || row.created_at || "",
-  };
-};
-
 /* ================================================================== */
 /*  Page                                                              */
 /* ================================================================== */
@@ -93,7 +80,7 @@ const toGrade = (row: Row, quiz: Row | undefined, course: Row | undefined): Grad
 export default function GradesPage() {
   const [status, setStatus] = useState<PageStatus>("loading");
   const [loadError, setLoadError] = useState("");
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [groupedGrades, setGroupedGrades] = useState<GroupedGrade[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -107,9 +94,6 @@ export default function GradesPage() {
         return;
       }
 
-      // مفيش .eq(user_id) هنا: سياسة RLS بترجّع تسليمات الطالب الحالي بس.
-      // الكود القديم كان بيعمل select * من غير أي فلتر، فكل طالب كان بيشوف
-      // درجات كل الطلاب.
       const { data: subs, error } = await supabase
         .from("student_submissions")
         .select("*")
@@ -134,12 +118,50 @@ export default function GradesPage() {
       const quizMap = new Map(quizzes.map((q) => [q.id, q]));
       const courseMap = new Map(courses.map((c) => [c.id, c]));
 
-      setGrades(
-        rows.map((row: Row) => {
-          const quiz = quizMap.get(row.quiz_id);
-          return toGrade(row, quiz, quiz ? courseMap.get(quiz.course_id) : undefined);
-        })
-      );
+      // تجميع المحاولات حسب quiz_id
+      const mapByQuiz = new Map<any, GroupedGrade>();
+
+      rows.forEach((row: Row) => {
+        const quizId = row.quiz_id || "general";
+        const quiz = quizMap.get(row.quiz_id);
+        const course = quiz ? courseMap.get(quiz.course_id) : undefined;
+
+        const score = Number(row.score) || 0;
+        const maxScore = Number(row.max_score) > 0 ? Number(row.max_score) : 100;
+        const percentage = Math.round((score / maxScore) * 100);
+        const graded = row.status === "تم التصحيح" || row.status === "graded" || row.score != null;
+        const state: GradeState = !graded ? "review" : percentage >= PASS_MARK ? "passed" : "failed";
+
+        const attempt: Attempt = {
+          id: row.id,
+          score,
+          maxScore,
+          percentage,
+          state,
+          feedback: row.feedback || row.notes || "",
+          submittedAt: row.submission_time || row.created_at || "",
+        };
+
+        if (!mapByQuiz.has(quizId)) {
+          mapByQuiz.set(quizId, {
+            quizId,
+            courseName: row.course_name || quiz?.course_name || course?.course_name || "غير مححدد",
+            instructor: quiz?.teacher_name || quiz?.instructor || course?.instructor || "غير محدد",
+            category: row.specialty || course?.course_specialty || quiz?.course_specialty || "عام",
+            attempts: [],
+            bestScore: score,
+            maxScore,
+          });
+        }
+
+        const group = mapByQuiz.get(quizId)!;
+        group.attempts.push(attempt);
+        if (score > group.bestScore) {
+          group.bestScore = score;
+        }
+      });
+
+      setGroupedGrades(Array.from(mapByQuiz.values()));
       setStatus("ready");
     } catch (err) {
       console.error("خطأ في جلب الدرجات:", err);
@@ -155,17 +177,23 @@ export default function GradesPage() {
   }, [load]);
 
   const summary = useMemo(() => {
-    const graded = grades.filter((g) => g.state !== "review");
-    const average = graded.length
-      ? Math.round(graded.reduce((sum, g) => sum + g.percentage, 0) / graded.length)
-      : null;
+    let totalAttempts = 0;
+    let passedCount = 0;
+    let reviewCount = 0;
+
+    groupedGrades.forEach((g) => {
+      totalAttempts += g.attempts.length;
+      if (g.attempts.some((a) => a.state === "passed")) passedCount++;
+      if (g.attempts.some((a) => a.state === "review")) reviewCount++;
+    });
+
     return {
-      total: grades.length,
-      passed: grades.filter((g) => g.state === "passed").length,
-      review: grades.filter((g) => g.state === "review").length,
-      average,
+      totalQuizzes: groupedGrades.length,
+      totalAttempts,
+      passedCount,
+      reviewCount,
     };
-  }, [grades]);
+  }, [groupedGrades]);
 
   return (
     <div className="mx-auto min-h-screen w-full space-y-6 text-slate-800 sm:space-y-8" dir="rtl">
@@ -176,16 +204,16 @@ export default function GradesPage() {
           <div className="space-y-2 sm:space-y-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/20 px-3 py-1 text-[11px] font-bold text-white shadow-xs backdrop-blur-md sm:text-xs">
               <Sparkles size={14} />
-              لوحة متابعة الدرجات الفورية، منصة
+              لوحة متابعة الدرجات والمحاولات، منصة
               <span dir="ltr" className="tracking-[0.3em]">
                 ZED
               </span>
             </span>
             <h1 className="text-xl font-black leading-tight tracking-tight sm:text-3xl lg:text-4xl">
-              سجل إنجازاتك ودرجاتك الفعلية 📊
+              سجل إنجازاتك ومحاولاتك الفعلية 📊
             </h1>
             <p className="max-w-2xl text-xs leading-relaxed text-blue-100 sm:text-sm">
-              هنا تظهر درجاتك بشكل آلي فور الانتهاء من حل الواجبات والاختبارات واعتمادها من المدرس.
+              يتم تجميع كافة محاولاتك لكل اختبار داخل كرت موحد لتتمكن من متابعة تطور مستواك بكل سهولة.
             </p>
           </div>
 
@@ -200,14 +228,14 @@ export default function GradesPage() {
       </header>
 
       {/* ------------------------------ Summary ------------------------------ */}
-      {status === "ready" && grades.length > 0 && (
+      {status === "ready" && groupedGrades.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {(
             [
-              ["إجمالي النتائج", String(summary.total), "text-slate-900"],
-              ["نجحت فيها", String(summary.passed), "text-emerald-600"],
-              ["قيد المراجعة", String(summary.review), "text-amber-600"],
-              ["المتوسط العام", summary.average === null ? "—" : `${summary.average}%`, "text-blue-600"],
+              ["الاختبارات المُجتازة", String(summary.totalQuizzes), "text-slate-900"],
+              ["إجمالي المحاولات", String(summary.totalAttempts), "text-blue-600"],
+              ["اختار بنجاح", String(summary.passedCount), "text-emerald-600"],
+              ["قيد المراجعة", String(summary.reviewCount), "text-amber-600"],
             ] as const
           ).map(([label, value, color]) => (
             <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
@@ -223,7 +251,7 @@ export default function GradesPage() {
         <div className="flex items-center justify-between gap-3 px-1">
           <h2 className="flex items-center gap-2 text-base font-black text-slate-800 sm:text-lg">
             <FileText size={20} className="text-blue-600" />
-            نتائج الواجبات والاختبارات
+            سجل الاختبارات والمحاولات المسجلة
           </h2>
           {status === "ready" && (
             <button
@@ -247,9 +275,6 @@ export default function GradesPage() {
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-16 text-center shadow-xs">
             <AlertTriangle size={40} className="mx-auto text-amber-500" />
             <p className="text-sm font-bold text-slate-700">يجب تسجيل الدخول لعرض درجاتك.</p>
-            <p className="mx-auto max-w-md text-xs text-slate-500">
-              درجاتك مرتبطة بحسابك الشخصي، ولا يمكن لأي طالب آخر الاطلاع عليها.
-            </p>
           </div>
         ) : status === "error" ? (
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-16 text-center shadow-xs">
@@ -264,35 +289,26 @@ export default function GradesPage() {
               إعادة المحاولة
             </button>
           </div>
-        ) : grades.length === 0 ? (
+        ) : groupedGrades.length === 0 ? (
           <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-16 text-center shadow-xs">
             <BarChart3 size={40} className="mx-auto text-blue-400" />
             <p className="text-sm font-bold text-slate-700">لا توجد درجات مسجلة حتى الآن.</p>
-            <p className="mx-auto max-w-md text-xs text-slate-500">
-              قم بحل الواجبات أو الاختبارات المتاحة لتظهر نتائجها هنا فوراً وتتبع مستواك الدراسي.
-            </p>
           </div>
         ) : (
           <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 sm:gap-6">
-            {grades.map((item) => {
-              const style = STATE_STYLE[item.state];
+            {groupedGrades.map((group, idx) => {
               return (
                 <li
-                  key={item.id}
+                  key={idx}
                   className="group flex flex-col justify-between space-y-4 rounded-2xl border-2 border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-300 hover:border-blue-500 hover:shadow-xl sm:space-y-5 sm:rounded-3xl sm:p-6"
                 >
                   <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <span className="max-w-[130px] truncate rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                      {item.category}
+                      {group.category}
                     </span>
-                    <span
-                      className={cx(
-                        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-black",
-                        style.className
-                      )}
-                    >
-                      {item.state === "review" ? <Clock size={12} /> : <CheckCircle2 size={12} />}
-                      {style.label}
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700">
+                      <History size={12} />
+                      عدد المحاولات: {group.attempts.length}
                     </span>
                   </div>
 
@@ -300,52 +316,54 @@ export default function GradesPage() {
                     <div className="space-y-1">
                       <span className="block text-[10px] font-bold text-slate-400">اسم المادة / الكورس</span>
                       <h3 className="text-sm font-black leading-snug text-slate-900 transition-colors group-hover:text-blue-600 sm:text-base">
-                        {item.courseName}
+                        {group.courseName}
                       </h3>
                     </div>
 
                     <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-xs text-slate-600">
                       <User size={14} className="shrink-0 text-blue-500" />
                       <span className="text-[10px] text-slate-400">المعلم:</span>
-                      <span className="truncate font-bold text-slate-700">{item.instructor}</span>
+                      <span className="truncate font-bold text-slate-700">{group.instructor}</span>
                     </div>
                   </div>
 
+                  {/* تفاصيل المحاولات المتعددة داخل نفس الكرت */}
                   <div className="space-y-2.5 border-t border-slate-100 pt-3 text-xs font-semibold">
-                    {item.state === "review" ? (
-                      <p className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-[11px] leading-relaxed text-amber-900">
-                        تم استلام إجابتك، وفي انتظار تصحيح المعلم.
-                      </p>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between rounded-xl border border-blue-100/60 bg-blue-50/60 p-2.5">
-                          <span className="text-[11px] text-slate-600">درجة التقييم:</span>
-                          <strong className="text-sm font-black tabular-nums text-blue-700">
-                            {item.score} / {item.maxScore}
-                          </strong>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className={cx(
-                              "h-full rounded-full transition-all",
-                              item.state === "passed" ? "bg-emerald-500" : "bg-rose-400"
+                    <span className="block text-[11px] font-black text-slate-700">سجل المحاولات ({group.attempts.length}):</span>
+                    
+                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                      {group.attempts.map((att, attIdx) => {
+                        const style = STATE_STYLE[att.state];
+                        return (
+                          <div key={att.id || attIdx} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2 text-[11px]">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700">المحاولة #{group.attempts.length - attIdx}</span>
+                              <span className={cx("px-2 py-0.5 rounded-full border text-[10px] font-black", style.className)}>
+                                {att.state === "review" ? <Clock size={10} className="inline ml-1" /> : <CheckCircle2 size={10} className="inline ml-1" />}
+                                {style.label}
+                              </span>
+                            </div>
+
+                            {att.state !== "review" && (
+                              <div className="flex items-center justify-between text-slate-600">
+                                <span>الدرجة:</span>
+                                <strong className="text-blue-700 font-black">{att.score} / {att.maxScore}</strong>
+                              </div>
                             )}
-                            style={{ width: `${Math.min(100, Math.max(0, item.percentage))}%` }}
-                          />
-                        </div>
-                      </>
-                    )}
 
-                    {item.feedback && (
-                      <div className="space-y-0.5 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-[11px] text-amber-900">
-                        <strong className="block text-[11px] font-black text-amber-800">ملاحظات المعلم:</strong>
-                        <p className="text-[11px] leading-relaxed text-slate-600">{item.feedback}</p>
-                      </div>
-                    )}
+                            {att.feedback && (
+                              <p className="text-amber-800 bg-amber-50 p-1.5 rounded border border-amber-200">
+                                <strong>ملاحظات:</strong> {att.feedback}
+                              </p>
+                            )}
 
-                    {item.submittedAt && (
-                      <p className="text-[10px] text-slate-400">تاريخ التسليم: {formatDate(item.submittedAt)}</p>
-                    )}
+                            {att.submittedAt && (
+                              <p className="text-[9px] text-slate-400">التاريخ: {formatDate(att.submittedAt)}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </li>
               );
