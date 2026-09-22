@@ -6,7 +6,6 @@ import {
   CreditCard,
   GraduationCap,
   LayoutDashboard,
-  LogOut,
   Radio,
   FileDown,
   ShieldCheck,
@@ -184,15 +183,7 @@ export default function Sidebar({ isOpen, onClose, onSignOut }: SidebarProps) {
               <ShieldCheck size={16} className="text-blue-600" />
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={signingOut}
-              className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-rose-100 p-3 text-sm font-semibold text-rose-600 shadow-sm transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white disabled:opacity-60"
-            >
-              <LogOut size={18} className="transition-transform duration-300 group-hover:-translate-x-1" />
-              {signingOut ? "جاري تسجيل الخروج..." : "تسجيل الخروج"}
-            </button>
+         
           </div>
         </div>
       </aside>
