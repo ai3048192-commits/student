@@ -27,7 +27,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { name: "الصفحة الرئيسية", icon: LayoutDashboard, path: "/" },
-  { name: "الكورسات المشترك بها", icon: BookOpen, path: "/courses" },
+  { name: "الكورسات", icon: BookOpen, path: "/courses" },
   { name: "مشاهدة الفيديوهات", icon: Video, path: "/videos" },
   { name: "تحميل الملفات والمذكرات", icon: FileDown, path: "/files" },
   { name: "لايف مباشر", icon: Radio, path: "/live", badge: "مباشر" },
